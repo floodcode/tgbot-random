@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"math/rand"
 	"regexp"
 	"strconv"
@@ -86,12 +87,14 @@ func sendExamples(msg *tgbot.Message) {
 		"`/random apple|pear|lemon`",
 	}, "\n")
 
-	bot.SendMessage(tgbot.SendMessageConfig{
+	_, err := bot.SendMessage(tgbot.SendMessageConfig{
 		ChatID:           tgbot.ChatID(msg.Chat.ID),
 		Text:             text,
 		ReplyToMessageID: msg.MessageID,
 		ParseMode:        tgbot.ParseModeMarkdown(),
 	})
+
+	logError(err)
 }
 
 func random(min, max int) int {
@@ -150,12 +153,20 @@ func sendRandom(msg *tgbot.Message, pattern string) {
 		defer sendExamples(msg)
 	}
 
-	bot.SendMessage(tgbot.SendMessageConfig{
+	_, err := bot.SendMessage(tgbot.SendMessageConfig{
 		ChatID:           tgbot.ChatID(msg.Chat.ID),
 		Text:             messageText,
 		ReplyToMessageID: msg.MessageID,
 		ParseMode:        tgbot.ParseModeMarkdown(),
 	})
+
+	logError(err)
+}
+
+func logError(e error) {
+	if e != nil {
+		log.Println(e)
+	}
 }
 
 func checkError(e error) {
