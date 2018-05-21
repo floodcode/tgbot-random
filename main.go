@@ -39,7 +39,7 @@ func main() {
 	checkError(err)
 
 	bot.Poll(tgbot.PollConfig{
-		Delay:    100,
+		Delay:    250,
 		Callback: updatesCallback,
 	})
 }
