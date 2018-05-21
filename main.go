@@ -56,7 +56,7 @@ func updatesCallback(updates []tgbot.Update) {
 }
 
 func processTextMessage(msg *tgbot.Message) {
-	cmdMatch, _ := regexp.Compile(`^\/([a-zA-Z_]+)(?:@` + botUser.Username + `)?(?:\s(.+)|)$`)
+	cmdMatch, _ := regexp.Compile(`^\/([a-zA-Z_]+)(?:@` + botUser.Username + `)(?:[\s\n]+(.+)|)$`)
 	match := cmdMatch.FindStringSubmatch(msg.Text)
 
 	if match == nil {
