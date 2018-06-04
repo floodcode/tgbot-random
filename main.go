@@ -4,23 +4,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"math/rand"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/floodcode/tgbot"
-)
-
-var (
-	bot     tgbot.TelegramBot
-	botUser tgbot.User
+	"github.com/floodcode/tbf"
 )
 
 type botConfig struct {
 	Token string `json:"token"`
+	Delay int    `json:"delay"`
 }
 
 func main() {
@@ -33,72 +28,40 @@ func main() {
 	err = json.Unmarshal(configData, &config)
 	checkError(err)
 
-	bot, err = tgbot.New(config.Token)
+	bot, err := tbf.New(config.Token)
 	checkError(err)
 
-	botUser, err = bot.GetMe()
-	checkError(err)
+	bot.AddRoute("start", helpAction)
+	bot.AddRoute("help", helpAction)
+	bot.AddRoute("random", randomAction)
 
-	bot.Poll(tgbot.PollConfig{
-		Delay:    250,
-		Callback: updatesCallback,
+	bot.Poll(tbf.PollConfig{
+		Delay: config.Delay,
 	})
 }
 
-func updatesCallback(updates []tgbot.Update) {
-	for _, update := range updates {
-		if update.Message == nil || len(update.Message.Text) == 0 {
-			continue
-		}
-
-		processTextMessage(update.Message)
-	}
+func helpAction(req tbf.Request) {
+	req.QuickMessageMD(strings.Join([]string{
+		"Usage examples:",
+		"/random `1-10` or `apple|pear|lemon`",
+	}, "\n"))
 }
 
-func processTextMessage(msg *tgbot.Message) {
-	cmdMatch, _ := regexp.Compile(`^\/([a-zA-Z_]+)(?:@` + botUser.Username + `)(?:[\s\n]+(.+)|)$`)
-	match := cmdMatch.FindStringSubmatch(msg.Text)
+func randomAction(req tbf.Request) {
+	pattern := req.Args
+	if len(pattern) == 0 {
+		req.QuickMessage("Enter the pattern:")
+		pattern = req.WaitNext().Message.Text
+	}
 
-	if match == nil {
+	result, ok := generateRandom(pattern)
+	if ok {
+		req.QuickMessageMD(result)
 		return
 	}
 
-	command := strings.ToLower(match[1])
-
-	if command == "start" || command == "help" {
-		sendExamples(msg)
-		return
-	}
-
-	if command == "random" {
-		if len(match[2]) == 0 {
-			sendExamples(msg)
-			return
-		}
-
-		sendRandom(msg, match[2])
-	}
-}
-
-func sendExamples(msg *tgbot.Message) {
-	text := strings.Join([]string{
-		"_Usage examples:_",
-		"`/random 1-10`",
-		"`/random apple|pear|lemon`",
-	}, "\n")
-
-	_, err := bot.SendMessage(tgbot.SendMessageConfig{
-		ChatID:           tgbot.ChatID(msg.Chat.ID),
-		Text:             text,
-		ReplyToMessageID: msg.MessageID,
-		ParseMode:        tgbot.ParseModeMarkdown(),
-	})
-
-	logError(err)
-}
-
-func random(min, max int) int {
-	return rand.Intn(max-min) + min
+	req.QuickMessage("Invalid pattern")
+	helpAction(req)
 }
 
 func generateRandom(pattern string) (string, bool) {
@@ -143,30 +106,8 @@ func generateRandom(pattern string) (string, bool) {
 	return "", false
 }
 
-func sendRandom(msg *tgbot.Message, pattern string) {
-	var messageText string
-	result, ok := generateRandom(pattern)
-	if ok {
-		messageText = result
-	} else {
-		messageText = "Invalid pattern"
-		defer sendExamples(msg)
-	}
-
-	_, err := bot.SendMessage(tgbot.SendMessageConfig{
-		ChatID:           tgbot.ChatID(msg.Chat.ID),
-		Text:             messageText,
-		ReplyToMessageID: msg.MessageID,
-		ParseMode:        tgbot.ParseModeMarkdown(),
-	})
-
-	logError(err)
-}
-
-func logError(e error) {
-	if e != nil {
-		log.Println(e)
-	}
+func random(min, max int) int {
+	return rand.Intn(max-min) + min
 }
 
 func checkError(e error) {
